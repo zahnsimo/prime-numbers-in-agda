@@ -10,11 +10,15 @@ open import Data.Nat.Properties
 open import Data.Product
 open import Data.Sum
 open import Function
+open import Function.Equivalence using (equivalence)
 open import Relation.Binary.PropositionalEquality
 open import Relation.Nullary
 open import Relation.Binary.Definitions hiding (Decidable)
 --open import Relation.Binary.Reasoning.StrictPartialOrder
 open import Relation.Unary using (Decidable)
+import Relation.Nullary.Decidable as Dec
+
+open import divRem
 
 postulate
   lem : ∀ {A : Set} → A ⊎ ¬ A
@@ -92,9 +96,9 @@ m∣'n∸m {m = suc m} m∣'z = m∣'z
 --m∣'n∸m (m∣'m+n {m} {n} m∣'n) rewrite m+n∸m≡n m n = m∣'n
 m∣'n∸m (m∣'m+n {m} {n} m∣'n) = subst (m ∣'_) (sym (m+n∸m≡n m n)) m∣'n
 
-A⊎B→¬A→B : {A B : Set} → A ⊎ B → ¬ A → B
-A⊎B→¬A→B (inj₁ a) ¬a = ⊥-elim (¬a a)
-A⊎B→¬A→B (inj₂ b) _  = b
+-- A⊎B→¬A→B : {A B : Set} → A ⊎ B → ¬ A → B
+-- A⊎B→¬A→B (inj₁ a) ¬a = ⊥-elim (¬a a)
+-- A⊎B→¬A→B (inj₂ b) _  = b
 
 ∣'→≤ : m ∣' n → n ≡ 0 ⊎ m ≤ n
 ∣'→≤ m∣'z = inj₁ refl
@@ -141,23 +145,23 @@ m ∣'? n@(suc _) = case m ≤? n of λ {
                    (yes m∣'n∸m) → yes (subst (m ∣'_) (m+[n∸m]≡n {m} {n} m≤n) (m∣'m+n m∣'n∸m))} }
 
 
--- ∣→r≡0 : (e : m ≢ 0) → m ∣ n → proj₁ (proj₂ (divRemUniqueR' m n e)) ≡ 0
--- ∣→r≡0 {m} {n} m≢0 m∣n with divRemUnique' m n m≢0
--- ∣→r≡0 {m} {.(k * m)} m≢0 (m∣'k*m k) | q , r , (r<m , eq) , u = {!!}
 
--- r≡0→∣ : (e : m ≢ 0) → proj₁ (proj₂ (divRem' m n e)) ≡ 0 → m ∣ n
--- r≡0→∣ {m} {n}  m≢0 r≡0 with (divRem' m n m≢0)
--- ... | q , r , r<m , eq = subst (m ∣_) (sym(trans eq (cong (_+ q * m) r≡0))) (m∣k*m q)
+∣→r≡0 : (e : m ≢ 0) → m ∣ n → proj₁ (proj₁ (proj₂ (divRemUnique' m n e))) ≡ 0
+∣→r≡0 {m} {n} m≢0 (m∣k*m k) with divRemUnique' m n m≢0
+... | q , (r , (r<m , eq) , uniqueR) , uniqueQ = let 0<m = ≤∧≢⇒< z≤n (λ 0≡m → m≢0 (sym 0≡m))
+    in uniqueR {0} ( 0<m
+  , (cong (_* m) (sym (uniqueQ {k} (0 , ((0<m , refl)
+  , (λ {r'} (r'<m , eq') → +-cancelʳ-≡ _ _ eq')))))))
 
+r≡0→∣ : (e : m ≢ 0) → proj₁ (proj₁ (proj₂ (divRemUnique' m n e))) ≡ 0 → m ∣ n
+r≡0→∣ {m} {n}  m≢0 r≡0 with (divRemUnique' m n m≢0)
+... | q , (r , (r<m , eq) , uniqueR) , uniqueQ = subst (m ∣_) (sym(trans eq (cong (_+ q * m) r≡0))) (m∣k*m q)
 
 
 _∣?_ : (m n : ℕ) → Dec(m ∣ n)
 zero ∣? zero = yes (m∣k*m 0)
 zero ∣? suc n = no z∤s
-m@(suc m₁) ∣? n = {!!} --with divRem' m n (1+n≢0 {m₁})
--- ... | q , zero , z<m , eq = yes (subst (m ∣_) (sym eq) (m∣k*m q))
--- ... | q , suc r , r<m , eq = no λ m∣'n → {!!}
-
+m@(suc _) ∣? n = Dec.map (equivalence (r≡0→∣ 1+n≢0) (∣→r≡0 1+n≢0) ) (_ ≟ _) 
 
 -----prime numbers
 

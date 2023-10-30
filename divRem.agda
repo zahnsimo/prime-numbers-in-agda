@@ -16,9 +16,8 @@ open import Relation.Binary.Definitions hiding (Decidable)
 --open import Relation.Binary.Reasoning.StrictPartialOrder
 open import Relation.Unary using (Decidable)
 
-variable
+private variable
   d k l m n o p : ℕ
-
 
 A⊎B→¬A→B : {A B : Set} → A ⊎ B → ¬ A → B
 A⊎B→¬A→B (inj₁ a) ¬a = ⊥-elim (¬a a)
@@ -70,16 +69,11 @@ divRemUnique m@(suc _) n with divRemUniqueQ m n
 
 
 divRem' : (m n : ℕ) → m ≢ 0 → ∃[ q ] ∃[ r ] r < m × n ≡ r + q * m
-divRem' m n m≢0 with divRem m n
-... | inj₁ m≡0 = ⊥-elim (m≢0 m≡0)
-... | inj₂ x = x
+divRem' m n m≢0 = A⊎B→¬A→B (divRem m n) m≢0
 
 divRemUniqueR' : (m n : ℕ) → m ≢ 0 → ∃[ q ] ∃! _≡_ λ r → ( r < m × n ≡ r + q * m )
-divRemUniqueR' m n m≢0 with divRemUniqueR m n
-... | inj₁ m≡0 = ⊥-elim (m≢0 m≡0)
-... | inj₂ x = x
+divRemUniqueR' m n m≢0 = A⊎B→¬A→B (divRemUniqueR m n) m≢0
 
 divRemUnique' : (m n : ℕ) → m ≢ 0 → ∃! _≡_ λ q → ( ∃! _≡_ λ r → ( r < m × n ≡ r + q * m ) )
-divRemUnique' m n m≢0 with divRemUnique m n
-... | inj₁ m≡0 = ⊥-elim (m≢0 m≡0)
-... | inj₂ x = x
+divRemUnique' m n m≢0 = A⊎B→¬A→B (divRemUnique m n) m≢0
+
