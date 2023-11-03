@@ -33,14 +33,19 @@ variable
 
 -----prime numbers
 
-prime_or_one : ℕ → Set
-prime_or_one n = ∀ {m : ℕ} → m ∣ n → m ≡ 1 ⊎ m ≡ n
+irreducible : ℕ → Set
+irreducible n = ∀ {m : ℕ} → m ∣ n → m ≡ 1 ⊎ m ≡ n
 
 prime : ℕ → Set
-prime n = ( n ≢ 1 ) × ( prime_or_one n )
+prime n = (n ≢ 0) × ( n ≢ 1 ) × ( irreducible n )
 
 
 ------list of divisors
+
+p>1 : prime p → p > 1
+p>1 {zero}    (p≢0 , p≢1 , irred) = ⊥-elim (p≢0 refl)
+p>1 {(suc 0)} (p≢0 , p≢1 , irred) = ⊥-elim (p≢1 refl)
+p>1 {p@(suc (suc _))} prime       = s≤s (s≤s z≤n)
 
 sorted? : List ℕ → Set
 sorted? l = AllPairs.AllPairs _<_ l
@@ -68,23 +73,24 @@ mk-divList : ∀ n → n ≢ 0 → divList n
 mk-divList zero n≢0 = ⊥-elim (n≢0 refl)
 mk-divList n@(suc _) n≢0 = record { list =  filter (_∣? n) (upTo (suc n))
                                   ; complete₁ = λ k k∈list → proj₂ (∈-filter⁻ (_∣? n) {xs = upTo(suc n)} k∈list)
-                                  ; complete₂ = λ k k∣n → ∈-filter⁺ (_∣? n) {xs = upTo (suc n)} (∈-upTo⁺ (s≤s (A⊎B→¬A→B (∣→≤ k∣n) 1+n≢0))) k∣n
+                                  ; complete₂ = λ k k∣n → ∈-filter⁺ (_∣? n) {xs = upTo (suc n)} (∈-upTo⁺ (s≤s (A⊎B⇒¬A⇒B (∣⇒≤ k∣n) 1+n≢0))) k∣n
                                   ; sorted = filter⁺ (_∣? n) (upTo-sorted (suc n))}
 
-x<tail→x≡head : (x y : ℕ) → (xs : List ℕ) → sorted? (y ∷ xs) → x ∈ (y ∷ xs) → All.All (x <_) xs → x ≡ y
-x<tail→x≡head x y xs s (here px) x<tail = px
-x<tail→x≡head x y xs s (there x∈l) x<tail = {!!}
+-- x<tail→x≡head : (x y : ℕ) → (xs : List ℕ) → sorted? (y ∷ xs) → x ∈ (y ∷ xs) → All.All (x <_) xs → x ≡ y
+-- x<tail→x≡head x y xs s (here px) x<tail = px
+-- x<tail→x≡head x y xs s (there x∈l) x<tail = {!!}
 
-sorted→samelist : ∀ (a b : List ℕ) → All.All (_∈ b) a × All.All (_∈ a) b → (sorted? a × sorted? b) → a ≡ b 
-sorted→samelist [] [] (a⊂b , b⊂a) (sa , sb) = refl
-sorted→samelist [] (x ∷ b) (a⊂b , b⊂a) (sa , sb) = ⊥-elim (x∉[] (All.head b⊂a))
-sorted→samelist (x ∷ a) [] (a⊂b , b⊂a) (sa , sb) = ⊥-elim (x∉[] (All.head a⊂b))
-sorted→samelist (x ∷ a) (y ∷ b) (a⊂b , b⊂a) (sa , sb) = let x≡y = {!!}
-  in {!!}
+-- sorted→samelist : ∀ (a b : List ℕ) → All.All (_∈ b) a × All.All (_∈ a) b → (sorted? a × sorted? b) → a ≡ b 
+-- sorted→samelist [] [] (a⊂b , b⊂a) (sa , sb) = refl
+-- sorted→samelist [] (x ∷ b) (a⊂b , b⊂a) (sa , sb) = ⊥-elim (x∉[] (All.head b⊂a))
+-- sorted→samelist (x ∷ a) [] (a⊂b , b⊂a) (sa , sb) = ⊥-elim (x∉[] (All.head a⊂b))
+-- sorted→samelist (x ∷ a) (y ∷ b) (a⊂b , b⊂a) (sa , sb) = let x≡y = {!!}
+--   in {!!}
 
-unique-divList : ∀ n → (a b : divList n) → list a ≡ list b
-unique-divList n record { list = list-a ; complete₁ = complete₁-a ; complete₂ = complete₂-a ; sorted = sorted-a } record { list = list-b ; complete₁ = complete₁-b ; complete₂ = complete₂-b ; sorted = sorted-b}
-  = {!!}
+-- unique-divList : ∀ n → (a b : divList n) → list a ≡ list b
+-- unique-divList n record { list = list-a ; complete₁ = complete₁-a ; complete₂ = complete₂-a ; sorted = sorted-a } record { list = list-b ; complete₁ = complete₁-b ; complete₂ = complete₂-b ; sorted = sorted-b}
+--   = sorted→samelist list-a list-b ( All.tabulate (λ {k} k∈l-a → complete₂-b k (complete₁-a k k∈l-a))
+--                                   , All.tabulate (λ {k} k∈l-b → complete₂-a k (complete₁-b k k∈l-b))) (sorted-a , sorted-b)
 
 
 at-least-2-divs : ∀ n → n ≢ 1 → (ds : divList n) → length (list ds) ≥ 2
@@ -101,7 +107,7 @@ lemma p k (there (here k≡p)) = inj₂ k≡p
 2divs→prime zero p≢0 e             = ⊥-elim (p≢0 refl)
 2divs→prime 1 p≢0 ()
 2divs→prime p@(suc (suc _)) p≢0 e  = let helper = λ k (k∣p : k ∣ p) → subst (k ∈_) e (complete₂(mk-divList p p≢0) k k∣p)
-               in ((λ p≡1 → 1+n≢0 (suc-injective p≡1))) , λ {k} k∣p → lemma p k (helper k k∣p)
+               in p≢0 , (λ p≡1 → 1+n≢0 (suc-injective p≡1)) , λ {k} k∣p → lemma p k (helper k k∣p)
 
 divisor→sublist : ∀ (n d k : ℕ) → (n≢0 : n ≢ 0) → (d≢0 : d ≢ 0) → d ∣ n → k ∈ list(mk-divList d d≢0) → k ∈ list(mk-divList n n≢0)
 divisor→sublist n d k n≢0 d≢0 d∣n k∈ = complete₂(mk-divList n n≢0) k (∣-trans (complete₁(mk-divList d d≢0) k k∈) d∣n)
@@ -109,32 +115,29 @@ divisor→sublist n d k n≢0 d≢0 d∣n k∈ = complete₂(mk-divList n n≢0)
 2-prime : prime 2
 2-prime = 2divs→prime 2 (λ ()) refl
 
-myuncons : {A : Set} → (xs : List A) → (xs ≢ []) → (A × List A)
-myuncons [] p = ⊥-elim (p refl)
-myuncons (x ∷ xs) p = x , xs
-
-
 
 ∃-prime-divisor : ∀ (n : ℕ) → n ≢ 1 → ∃[ p ] p ∣ n × prime p
 ∃-prime-divisor zero n≢1 = 2 , ((m∣k*m zero) , 2-prime)
 ∃-prime-divisor (suc zero) n≢1 = ⊥-elim (n≢1 refl)
-∃-prime-divisor n@(suc (suc n₁)) n≢1 with mk-divList n 1+n≢0
-... | record { list = [] ; complete₁ = complete₁ ; complete₂ = complete₂ } = ⊥-elim ( x∉[] (complete₂ 1 o∣m))
-... | record { list = z ∷ [] ; complete₁ = complete₁ ; complete₂ = complete₂ ; sorted = _ } = ⊥-elim (x≢y∉[z] {z = z} (z ∷ []) refl n≢1 ((complete₂ n m∣m) , (complete₂ 1 o∣m)))
-... | record { list = zero ∷ y ∷ list₁ ; complete₁ = complete₁ ; complete₂ = complete₂ ; sorted = _ } = ⊥-elim (z∤s (complete₁ 0 (here refl)))
-... | record { list = suc zero ∷ y ∷ list₁ ; complete₁ = complete₁ ; complete₂ = complete₂ ; sorted = sorted }
+∃-prime-divisor n@(suc (suc _)) n≢1 with mk-divList n 1+n≢0
+... | record { list = [] ; complete₂ = complete₂ } = ⊥-elim ( x∉[] (complete₂ 1 o∣m))
+... | record { list = z ∷ [] ; complete₂ = complete₂ } = ⊥-elim (x≢y∉[z] {z = z} (z ∷ []) refl n≢1 ((complete₂ n m∣m) , (complete₂ 1 o∣m)))
+... | record { list = zero ∷ y ∷ list ; complete₁ = complete₁ } = ⊥-elim (z∤s (complete₁ 0 (here refl)))
+... | record { list = suc zero ∷ y ∷ list ; complete₁ = complete₁ ; complete₂ = complete₂ ; sorted = sorted }
  = let y∣n = complete₁ y (there (here refl))
-       y≢1 = >⇒≢ (All.head (AllPairs.head sorted))
-       y<rest = {!λ {z} (z∈rest : z ∈ list₁) → ?!}
-       m≤y = λ {m} (m∣y : m ∣ y) → A⊎B→¬A→B (∣→≤ m∣y) λ y≡0 → z∤s (subst (_∣ n) y≡0 y∣n)
-   in y , (y∣n , (y≢1
-  , λ m∣y → {!!}))
-... | record { list = suc (suc x) ∷ y ∷ list₁ ; complete₁ = complete₁ ; complete₂ = complete₂ ; sorted = sorted } = ⊥-elim {!!}
+       y>1 = All.head (AllPairs.head sorted)
+       y≢0 = >⇒≢ (<-trans (s≤s z≤n) y>1)
+       y≢1 = >⇒≢ y>1
+       y<rest = AllPairs.head (AllPairs.tail sorted)
+       m≤y = λ {m} (m∣y : m ∣ y) → A⊎B⇒¬A⇒B (∣⇒≤ m∣y) y≢0
+       m∈list = λ {m} (m∣y : m ∣ y) → complete₂ m (∣-trans m∣y y∣n)
+   in y , (y∣n , ( y≢0 , y≢1
+  , λ {m} m∣y → case m∈list m∣y of λ { (here m≡1) → inj₁ m≡1 ; (there (here m≡y)) → inj₂ m≡y ; (there (there m∈rest)) → ⊥-elim {!!}}))
+... | record { list = suc (suc _) ∷ y ∷ list ; complete₁ = complete₁ ; complete₂ = complete₂ ; sorted = sorted } = ⊥-elim {!!}
 
 
 fac : ℕ → ℕ
 fac 0 = 1
---fac 1 = 1
 fac (suc n) = (suc n) * fac n
 
 fac≢0 : ∀ n → fac n ≢ 0
@@ -148,20 +151,12 @@ k∣facn  k@(suc _) k≢0 n k≤n = helper n (≤⇒≤′ k≤n)
         helper n ≤′-refl = m∣m*k _
         helper n@(suc n₁) (≤′-step e) = ∣-trans (helper n₁ e) (m∣k*m (suc n₁))
 
-----!!!!move to divisible
------define ∤
-
-m∣'n→m∤'1+n : m > 1 → m ∣' n → ¬ (m ∣' suc n)
-m∣'n→m∤'1+n m>1 m∣'z e = {!!}
-m∣'n→m∤'1+n {m} {n} m>1 (m∣'m+n m∣'n) e = m∣'n→m∤'1+n m>1 m∣'n (subst (m ∣'_) {!m+n∸n≡m m !} {!!})
-
-m∣n→m∤1+n : m > 1 → m ∣ n → ¬ m ∣ suc n
-m∣n→m∤1+n m>1 m∣n = {!!}
-----!!!!
 
 infprim : ∀ (n : ℕ) → ∃[ p ] n ≤ p × prime p
 infprim n = let N = suc (fac n)
-                p , (p∣N , primep) = ∃-prime-divisor N λ N≡1 → fac≢0 n (suc-injective N≡1)
+                N≢1 = λ N≡1 → fac≢0 n (suc-injective N≡1)
+                p , (p∣N , primep) = ∃-prime-divisor N N≢1
+                p≢0 = proj₁ primep
   in case p <? n of λ
   { (no p≮n)  → p , ((≮⇒≥ p≮n) , primep)
-  ; (yes p<n) → p , (⊥-elim (m∣n→m∤1+n {!!} (k∣facn p {!!} n (<⇒≤ p<n)) p∣N) , primep)}
+  ; (yes p<n) → ⊥-elim (m∣n⇒m∤1+n (p>1 primep) (k∣facn p p≢0 n (<⇒≤ p<n)) p∣N) }

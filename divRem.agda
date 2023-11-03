@@ -19,13 +19,14 @@ open import Relation.Unary using (Decidable)
 private variable
   d k l m n o p : ℕ
 
-A⊎B→¬A→B : {A B : Set} → A ⊎ B → ¬ A → B
-A⊎B→¬A→B (inj₁ a) ¬a = ⊥-elim (¬a a)
-A⊎B→¬A→B (inj₂ b) _  = b
+A⊎B⇒¬A⇒B : {A B : Set} → A ⊎ B → ¬ A → B
+A⊎B⇒¬A⇒B (inj₁ a) ¬a = ⊥-elim (¬a a)
+A⊎B⇒¬A⇒B (inj₂ b) _  = b
 
 ------division with remainder
 ------goal : n = r + q * m , r < m
 
+----idea : ∃ (q , r) with ...
 
 divRem : (m n : ℕ) → m ≡ 0 ⊎ ∃[ q ] ∃[ r ] r < m × n ≡ r + q * m
 divRem zero n  = inj₁ refl
@@ -69,11 +70,11 @@ divRemUnique m@(suc _) n with divRemUniqueQ m n
 
 
 divRem' : (m n : ℕ) → m ≢ 0 → ∃[ q ] ∃[ r ] r < m × n ≡ r + q * m
-divRem' m n m≢0 = A⊎B→¬A→B (divRem m n) m≢0
+divRem' m n m≢0 = A⊎B⇒¬A⇒B (divRem m n) m≢0
 
 divRemUniqueR' : (m n : ℕ) → m ≢ 0 → ∃[ q ] ∃! _≡_ λ r → ( r < m × n ≡ r + q * m )
-divRemUniqueR' m n m≢0 = A⊎B→¬A→B (divRemUniqueR m n) m≢0
+divRemUniqueR' m n m≢0 = A⊎B⇒¬A⇒B (divRemUniqueR m n) m≢0
 
 divRemUnique' : (m n : ℕ) → m ≢ 0 → ∃! _≡_ λ q → ( ∃! _≡_ λ r → ( r < m × n ≡ r + q * m ) )
-divRemUnique' m n m≢0 = A⊎B→¬A→B (divRemUnique m n) m≢0
+divRemUnique' m n m≢0 = A⊎B⇒¬A⇒B (divRemUnique m n) m≢0
 
