@@ -1,9 +1,15 @@
 module prim where
 
+--open import Relation.Binary.Reasoning.StrictPartialOrder
+import Data.List.Relation.Unary.All as All
+open import Data.List.Relation.Unary.All.Properties using (¬Any⇒All¬ ; All¬⇒¬Any)
+import Data.List.Relation.Unary.AllPairs as AllPairs 
+import Relation.Nullary.Decidable as Dec
 open import Data.Empty
 open import Data.List
 open import Data.List.Membership.Propositional
 open import Data.List.Membership.Propositional.Properties
+open import Data.List.Relation.Unary.AllPairs.Properties
 open import Data.List.Relation.Unary.Any
 open import Data.Nat
 open import Data.Nat.Properties
@@ -11,15 +17,10 @@ open import Data.Product
 open import Data.Sum
 open import Function
 open import Function.Equivalence using (equivalence)
+open import Relation.Binary.Definitions hiding (Decidable)
 open import Relation.Binary.PropositionalEquality
 open import Relation.Nullary
-open import Relation.Binary.Definitions hiding (Decidable)
---open import Relation.Binary.Reasoning.StrictPartialOrder
 open import Relation.Unary using (Decidable)
-import Relation.Nullary.Decidable as Dec
-import Data.List.Relation.Unary.AllPairs as AllPairs 
-open import Data.List.Relation.Unary.AllPairs.Properties
-import Data.List.Relation.Unary.All as All
 
 open import divisible
 open import divRem
@@ -39,19 +40,35 @@ irreducible n = ∀ {m : ℕ} → m ∣ n → m ≡ 1 ⊎ m ≡ n
 prime : ℕ → Set
 prime n = (n ≢ 0) × ( n ≢ 1 ) × ( irreducible n )
 
-
-------list of divisors
+----some properties
 
 p>1 : prime p → p > 1
 p>1 {zero}    (p≢0 , p≢1 , irred) = ⊥-elim (p≢0 refl)
 p>1 {(suc 0)} (p≢0 , p≢1 , irred) = ⊥-elim (p≢1 refl)
 p>1 {p@(suc (suc _))} prime       = s≤s (s≤s z≤n)
 
+------list of divisors
+
 sorted? : List ℕ → Set
-sorted? l = AllPairs.AllPairs _<_ l
+sorted? = AllPairs.AllPairs _<_
+
+record divList (n : ℕ) : Set where
+  field list      : List ℕ
+        complete₁ : k ∈ list → k ∣ n
+        complete₂ : k ∣ n → k ∈ list
+        sorted    : sorted? list
+open divList
 
 upTo-sorted : ∀ n → sorted? (upTo n)
 upTo-sorted n = applyUpTo⁺₁ id n λ i<j j<n → i<j
+
+mk-divList : ∀ n → n ≢ 0 → divList n
+mk-divList zero n≢0 = ⊥-elim (n≢0 refl)
+mk-divList n@(suc _) n≢0 = record { list =  filter (_∣? n) (upTo (suc n))
+                                  ; complete₁ = λ k∈list → proj₂ (∈-filter⁻ (_∣? n) {xs = upTo(suc n)} k∈list)
+                                  ; complete₂ = λ k∣n → ∈-filter⁺ (_∣? n) {xs = upTo (suc n)} (∈-upTo⁺ (s≤s (A⊎B⇒¬A⇒B (∣⇒≤ k∣n) 1+n≢0))) k∣n
+                                  ; sorted = filter⁺ (_∣? n) (upTo-sorted (suc n))}
+
 
 x∉[] : {A : Set} → {x : A} → x ∉ []
 x∉[] = λ ()
@@ -61,20 +78,6 @@ x∉[y] x≢y = λ { (here x≡y) → ⊥-elim (x≢y x≡y)}
 
 x≢y∉[z] : {x y z : ℕ} → (l : List ℕ) → (e : l ≡ z ∷ []) → x ≢ y → ¬ (x ∈ l × y ∈ l)
 x≢y∉[z] (z ∷ []) e x≢y = λ { (here x≡z , here y≡z) → x≢y (trans x≡z (sym y≡z))}
-
-record divList (n : ℕ) : Set where
-  field list      : List ℕ
-        complete₁ : ∀ k → k ∈ list → k ∣ n
-        complete₂ : ∀ k → k ∣ n → k ∈ list
-        sorted    : sorted? list
-open divList
-
-mk-divList : ∀ n → n ≢ 0 → divList n
-mk-divList zero n≢0 = ⊥-elim (n≢0 refl)
-mk-divList n@(suc _) n≢0 = record { list =  filter (_∣? n) (upTo (suc n))
-                                  ; complete₁ = λ k k∈list → proj₂ (∈-filter⁻ (_∣? n) {xs = upTo(suc n)} k∈list)
-                                  ; complete₂ = λ k k∣n → ∈-filter⁺ (_∣? n) {xs = upTo (suc n)} (∈-upTo⁺ (s≤s (A⊎B⇒¬A⇒B (∣⇒≤ k∣n) 1+n≢0))) k∣n
-                                  ; sorted = filter⁺ (_∣? n) (upTo-sorted (suc n))}
 
 -- x<tail→x≡head : (x y : ℕ) → (xs : List ℕ) → sorted? (y ∷ xs) → x ∈ (y ∷ xs) → All.All (x <_) xs → x ≡ y
 -- x<tail→x≡head x y xs s (here px) x<tail = px
@@ -94,8 +97,8 @@ mk-divList n@(suc _) n≢0 = record { list =  filter (_∣? n) (upTo (suc n))
 
 
 at-least-2-divs : ∀ n → n ≢ 1 → (ds : divList n) → length (list ds) ≥ 2
-at-least-2-divs n n≢1 record { list = [] ; complete₂ = complete₂ } = ⊥-elim (x∉[] (complete₂ 1 o∣m))
-at-least-2-divs n n≢1 record { list = (z ∷ []) ; complete₂ = complete₂ } = ⊥-elim (x≢y∉[z] {z = z} (z ∷ []) refl n≢1 ((complete₂ n m∣m) , (complete₂ 1 o∣m)))
+at-least-2-divs n n≢1 record { list = [] ; complete₂ = complete₂ } = ⊥-elim (x∉[] (complete₂ o∣m))
+at-least-2-divs n n≢1 record { list = (z ∷ []) ; complete₂ = complete₂ } = ⊥-elim (x≢y∉[z] {z = z} (z ∷ []) refl n≢1 ((complete₂ m∣m) , (complete₂ o∣m)))
 at-least-2-divs n n≢1 record { list = (x ∷ x₁ ∷ list₁) } = s≤s (s≤s z≤n)
 
 
@@ -106,33 +109,38 @@ lemma p k (there (here k≡p)) = inj₂ k≡p
 2divs→prime : ∀ (p : ℕ) → (p≢0 : p ≢ 0) → list(mk-divList p p≢0) ≡ 1 ∷ p ∷ [] → prime p
 2divs→prime zero p≢0 e             = ⊥-elim (p≢0 refl)
 2divs→prime 1 p≢0 ()
-2divs→prime p@(suc (suc _)) p≢0 e  = let helper = λ k (k∣p : k ∣ p) → subst (k ∈_) e (complete₂(mk-divList p p≢0) k k∣p)
+2divs→prime p@(suc (suc _)) p≢0 e  = let helper = λ k (k∣p : k ∣ p) → subst (k ∈_) e (complete₂(mk-divList p p≢0) k∣p)
                in p≢0 , (λ p≡1 → 1+n≢0 (suc-injective p≡1)) , λ {k} k∣p → lemma p k (helper k k∣p)
 
-divisor→sublist : ∀ (n d k : ℕ) → (n≢0 : n ≢ 0) → (d≢0 : d ≢ 0) → d ∣ n → k ∈ list(mk-divList d d≢0) → k ∈ list(mk-divList n n≢0)
-divisor→sublist n d k n≢0 d≢0 d∣n k∈ = complete₂(mk-divList n n≢0) k (∣-trans (complete₁(mk-divList d d≢0) k k∈) d∣n)
+divisor→sublist : ∀ (n d : ℕ) → (n≢0 : n ≢ 0) → (d≢0 : d ≢ 0) → d ∣ n → k ∈ list(mk-divList d d≢0) → k ∈ list(mk-divList n n≢0)
+divisor→sublist n d n≢0 d≢0 d∣n k∈ = complete₂(mk-divList n n≢0) (∣-trans (complete₁(mk-divList d d≢0) k∈) d∣n)
+
 
 2-prime : prime 2
 2-prime = 2divs→prime 2 (λ ()) refl
 
+head≡1 : ∀ n → n ≢ 0 → n ≢ 1 → (ds : divList n) → ∃[ l ] list ds ≡ 1 ∷ l
+head≡1 zero n≢0 n≢1 ds = {!!}
+head≡1 (suc zero) n≢0 n≢1 ds = {!!}
+head≡1 n@(suc (suc _)) n≢0 n≢1 record { list = list ; complete₁ = complete₁ ; complete₂ = complete₂ ; sorted = sorted } = {!!} , {!!}
 
 ∃-prime-divisor : ∀ (n : ℕ) → n ≢ 1 → ∃[ p ] p ∣ n × prime p
 ∃-prime-divisor zero n≢1 = 2 , ((m∣k*m zero) , 2-prime)
 ∃-prime-divisor (suc zero) n≢1 = ⊥-elim (n≢1 refl)
 ∃-prime-divisor n@(suc (suc _)) n≢1 with mk-divList n 1+n≢0
-... | record { list = [] ; complete₂ = complete₂ } = ⊥-elim ( x∉[] (complete₂ 1 o∣m))
-... | record { list = z ∷ [] ; complete₂ = complete₂ } = ⊥-elim (x≢y∉[z] {z = z} (z ∷ []) refl n≢1 ((complete₂ n m∣m) , (complete₂ 1 o∣m)))
-... | record { list = zero ∷ y ∷ list ; complete₁ = complete₁ } = ⊥-elim (z∤s (complete₁ 0 (here refl)))
+... | record { list = [] ; complete₂ = complete₂ } = ⊥-elim ( x∉[] (complete₂ o∣m))
+... | record { list = z ∷ [] ; complete₂ = complete₂ } = ⊥-elim (x≢y∉[z] {z = z} (z ∷ []) refl n≢1 ((complete₂ m∣m) , (complete₂ o∣m)))
+... | record { list = zero ∷ y ∷ list ; complete₁ = complete₁ } = ⊥-elim (z∤s (complete₁ (here refl)))
 ... | record { list = suc zero ∷ y ∷ list ; complete₁ = complete₁ ; complete₂ = complete₂ ; sorted = sorted }
- = let y∣n = complete₁ y (there (here refl))
+ = let y∣n = complete₁ (there (here refl))
        y>1 = All.head (AllPairs.head sorted)
        y≢0 = >⇒≢ (<-trans (s≤s z≤n) y>1)
        y≢1 = >⇒≢ y>1
        y<rest = AllPairs.head (AllPairs.tail sorted)
        m≤y = λ {m} (m∣y : m ∣ y) → A⊎B⇒¬A⇒B (∣⇒≤ m∣y) y≢0
-       m∈list = λ {m} (m∣y : m ∣ y) → complete₂ m (∣-trans m∣y y∣n)
+       m∈list = λ {m} (m∣y : m ∣ y) → complete₂ (∣-trans m∣y y∣n)
    in y , (y∣n , ( y≢0 , y≢1
-  , λ {m} m∣y → case m∈list m∣y of λ { (here m≡1) → inj₁ m≡1 ; (there (here m≡y)) → inj₂ m≡y ; (there (there m∈rest)) → ⊥-elim {!!}}))
+  , λ {m} m∣y → case m∈list m∣y of λ { (here m≡1) → inj₁ m≡1 ; (there (here m≡y)) → inj₂ m≡y ; (there (there m∈rest)) → ⊥-elim (All¬⇒¬Any (All.map (λ y< → <⇒≢ (≤-trans (s≤s (m≤y m∣y)) y<)) y<rest) m∈rest)}))
 ... | record { list = suc (suc _) ∷ y ∷ list ; complete₁ = complete₁ ; complete₂ = complete₂ ; sorted = sorted } = ⊥-elim {!!}
 
 

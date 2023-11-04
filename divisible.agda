@@ -8,6 +8,7 @@ open import Data.List.Relation.Unary.Any
 open import Data.Nat
 open import Data.Nat.Properties
 open import Data.Product
+open import Data.Product.Properties
 open import Data.Sum
 open import Function
 open import Function.Equivalence using (equivalence)
@@ -146,18 +147,15 @@ m ∣'? n@(suc _) = case m ≤? n of λ {
                    (yes m∣'n∸m) → yes (subst (m ∣'_) (m+[n∸m]≡n {m} {n} m≤n) (m∣'m+n m∣'n∸m))} }
 
 
-
-∣⇒r≡0 : (e : m ≢ 0) → m ∣ n → proj₁ (proj₁ (proj₂ (divRemUnique' m n e))) ≡ 0
+∣⇒r≡0 : (e : m ≢ 0) → m ∣ n → rem m n e ≡ 0
 ∣⇒r≡0 {m} {n} m≢0 (m∣k*m k) with divRemUnique' m n m≢0
-... | q , (r , (r<m , eq) , uniqueR) , uniqueQ = let 0<m = ≤∧≢⇒< z≤n (λ 0≡m → m≢0 (sym 0≡m))
-    in uniqueR {0} ( 0<m
-  , (cong (_* m) (sym (uniqueQ {k} (0 , ((0<m , refl)
-  , (λ {r'} (r'<m , eq') → +-cancelʳ-≡ _ _ eq')))))))
+... | (q , r) , (r<m , eq) , unique = let 0<m = ≤∧≢⇒< z≤n (λ 0≡m → m≢0 (sym 0≡m))
+  in proj₂ (Inverse.f⁻¹ ×-≡,≡↔≡ (unique {k , 0} (0<m , refl)))
 
-r≡0⇒∣ : (e : m ≢ 0) → proj₁ (proj₁ (proj₂ (divRemUnique' m n e))) ≡ 0 → m ∣ n
+
+r≡0⇒∣ : (e : m ≢ 0) → rem  m n e ≡ 0 → m ∣ n
 r≡0⇒∣ {m} {n}  m≢0 r≡0 with (divRemUnique' m n m≢0)
-... | q , (r , (r<m , eq) , uniqueR) , uniqueQ = subst (m ∣_) (sym(trans eq (cong (_+ q * m) r≡0))) (m∣k*m q)
-
+... | (q , r) , (r<m , eq) , unique = subst (m ∣_) (sym (trans eq (cong (_+ q * m) r≡0))) (m∣k*m q)
 
 _∣?_ : (m n : ℕ) → Dec(m ∣ n)
 zero ∣? zero = yes (m∣k*m 0)
@@ -165,13 +163,10 @@ zero ∣? suc n = no z∤s
 m@(suc _) ∣? n = Dec.map (equivalence (r≡0⇒∣ 1+n≢0) (∣⇒r≡0 1+n≢0) ) (_ ≟ _) 
 
 
-
 m∣n⇒m∤1+n : m > 1 → m ∣ n →  m ∤ suc n
 m∣n⇒m∤1+n {m} {n} m>1 (m∣k*m k)
   = let m≢0 = >⇒≢ (<-trans (s≤s z≤n) m>1)
-        q , (r , x , uniqueR) , uniqueQ = divRemUnique' m (suc n) m≢0
-        q≡k = uniqueQ {k} (1 , (m>1 , refl) , (λ {r'} (r'<m , eq') → +-cancelʳ-≡ _ _ eq'))
-        r≡1 = uniqueR {1} (m>1 , cong suc (cong (_* m) (sym q≡k)))
-
-    in λ m∣1+n → 1+n≢0 (trans (sym r≡1)  (∣⇒r≡0 m≢0 m∣1+n))
+        (q , r) , x , unique = divRemUnique' m (suc n) m≢0
+        r≡1 =  proj₂ (Inverse.f⁻¹ ×-≡,≡↔≡ (unique {k , 1} (m>1 , refl)))
+    in λ m∣1+n → 1+n≢0 (trans (sym r≡1) (∣⇒r≡0 m≢0 m∣1+n))
 
