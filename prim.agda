@@ -25,8 +25,6 @@ open import Relation.Unary using (Decidable)
 open import divisible
 open import divRem
 
-postulate
-  lem : ∀ {A : Set} → A ⊎ ¬ A
 
 variable
   d k l m n o p : ℕ
@@ -119,29 +117,41 @@ divisor→sublist n d n≢0 d≢0 d∣n k∈ = complete₂(mk-divList n n≢0) (
 2-prime : prime 2
 2-prime = 2divs→prime 2 (λ ()) refl
 
-head≡1 : ∀ n → n ≢ 0 → n ≢ 1 → (ds : divList n) → ∃[ l ] list ds ≡ 1 ∷ l
-head≡1 zero n≢0 n≢1 ds = {!!}
-head≡1 (suc zero) n≢0 n≢1 ds = {!!}
-head≡1 n@(suc (suc _)) n≢0 n≢1 record { list = list ; complete₁ = complete₁ ; complete₂ = complete₂ ; sorted = sorted } = {!!} , {!!}
+head≡1 : ∀ n → n ≢ 0 → n ≢ 1 → (ds : divList n) → ∃[ l ] list ds ≡ 1 ∷ l × l ≢ [] 
+head≡1 zero n≢0 n≢1 ds = ⊥-elim (n≢0 refl)
+head≡1 (suc zero) n≢0 n≢1 ds = ⊥-elim (n≢1 refl)
+head≡1 n@(suc (suc _)) n≢0 n≢1 record { list = [] ; complete₂ = complete₂ }
+  = ⊥-elim (x∉[] (complete₂ o∣m))
+head≡1 n@(suc (suc _)) n≢0 n≢1 record { list = (zero ∷ list₁) ; complete₁ = complete₁ }
+  = ⊥-elim (z∤s (complete₁ (here refl)))
+head≡1 n@(suc (suc _)) n≢0 n≢1 record { list = (suc zero ∷ []) ; complete₂ = complete₂ }
+  = ⊥-elim (case complete₂ m∣m of λ { (here px) → n≢1 px ; (there x) → x∉[] x})
+head≡1 n@(suc (suc _)) n≢0 n≢1 record { list = (suc zero ∷ x ∷ list₁) ; complete₂ = complete₂ }
+  = x ∷ list₁ , refl , λ ()
+head≡1 n@(suc (suc _)) n≢0 n≢1 record { list = (suc (suc x) ∷ list₁) ; complete₂ = complete₂ ; sorted = sorted }
+  = let 1∈list = complete₂ o∣m
+        1∈rest = case 1∈list of λ { (there 1∈r) → 1∈r }
+    in case All.lookup (AllPairs.head sorted) 1∈rest of λ { (s≤s ())}
+
 
 ∃-prime-divisor : ∀ (n : ℕ) → n ≢ 1 → ∃[ p ] p ∣ n × prime p
 ∃-prime-divisor zero n≢1 = 2 , ((m∣k*m zero) , 2-prime)
 ∃-prime-divisor (suc zero) n≢1 = ⊥-elim (n≢1 refl)
-∃-prime-divisor n@(suc (suc _)) n≢1 with mk-divList n 1+n≢0
-... | record { list = [] ; complete₂ = complete₂ } = ⊥-elim ( x∉[] (complete₂ o∣m))
-... | record { list = z ∷ [] ; complete₂ = complete₂ } = ⊥-elim (x≢y∉[z] {z = z} (z ∷ []) refl n≢1 ((complete₂ m∣m) , (complete₂ o∣m)))
-... | record { list = zero ∷ y ∷ list ; complete₁ = complete₁ } = ⊥-elim (z∤s (complete₁ (here refl)))
-... | record { list = suc zero ∷ y ∷ list ; complete₁ = complete₁ ; complete₂ = complete₂ ; sorted = sorted }
- = let y∣n = complete₁ (there (here refl))
-       y>1 = All.head (AllPairs.head sorted)
-       y≢0 = >⇒≢ (<-trans (s≤s z≤n) y>1)
-       y≢1 = >⇒≢ y>1
-       y<rest = AllPairs.head (AllPairs.tail sorted)
-       m≤y = λ {m} (m∣y : m ∣ y) → A⊎B⇒¬A⇒B (∣⇒≤ m∣y) y≢0
-       m∈list = λ {m} (m∣y : m ∣ y) → complete₂ (∣-trans m∣y y∣n)
-   in y , (y∣n , ( y≢0 , y≢1
-  , λ {m} m∣y → case m∈list m∣y of λ { (here m≡1) → inj₁ m≡1 ; (there (here m≡y)) → inj₂ m≡y ; (there (there m∈rest)) → ⊥-elim (All¬⇒¬Any (All.map (λ y< → <⇒≢ (≤-trans (s≤s (m≤y m∣y)) y<)) y<rest) m∈rest)}))
-... | record { list = suc (suc _) ∷ y ∷ list ; complete₁ = complete₁ ; complete₂ = complete₂ ; sorted = sorted } = ⊥-elim {!!}
+∃-prime-divisor n@(suc (suc _)) n≢1 with ds ← mk-divList n 1+n≢0 | head≡1 n 1+n≢0 n≢1 ds
+... | l , list≡1∷l  , l≢0 with ds
+... | record { list = suc zero ∷ [] ; complete₁ = complete₁ ; complete₂ = complete₂ ; sorted = sorted } = ⊥-elim (case list≡1∷l of λ { refl → l≢0 refl})
+... | record { list = suc zero ∷ p ∷ list₁ ; complete₁ = complete₁ ; complete₂ = complete₂ ; sorted = sorted }
+ = let p∣n = complete₁ (there (here refl))
+       p>1 = All.head (AllPairs.head sorted)
+       p≢0 = >⇒≢ (<-trans (s≤s z≤n) p>1)
+       p≢1 = >⇒≢ p>1
+       p<rest = AllPairs.head (AllPairs.tail sorted)
+       m≤p = λ {m} (m∣p : m ∣ p) → A⊎B⇒¬A⇒B (∣⇒≤ m∣p) p≢0
+       m∈list = λ {m} (m∣p : m ∣ p) → complete₂ (∣-trans m∣p p∣n)
+   in p , (p∣n , ( p≢0 , p≢1
+  , λ {m} m∣p → case m∈list m∣p of λ { (here m≡1) → inj₁ m≡1
+                                     ; (there (here m≡p)) → inj₂ m≡p
+                                     ; (there (there m∈rest)) → ⊥-elim (All¬⇒¬Any (All.map (λ p< → <⇒≢ (≤-trans (s≤s (m≤p m∣p)) p<)) p<rest) m∈rest)}))
 
 
 fac : ℕ → ℕ
@@ -150,7 +160,7 @@ fac (suc n) = (suc n) * fac n
 
 fac≢0 : ∀ n → fac n ≢ 0
 fac≢0 zero = λ ()
-fac≢0 (suc n) = {!!}
+fac≢0 (suc n) = λ eq → fac≢0 n (m+n≡0⇒m≡0 (fac n) eq)
 
 k∣facn : ∀ k → k ≢ 0 → ∀ n → k ≤ n → k ∣ fac n
 k∣facn zero k≢0 n k≤n = ⊥-elim (k≢0 refl)
